@@ -93,10 +93,16 @@ export async function POST(request: Request) {
 
     const userType: UserType = session.user.type;
 
-    const messageCount = await getMessageCountByUserId({
-      id: session.user.id,
-      differenceInHours: 24,
-    });
+    const messageCount =
+      1 +
+      (await getMessageCountByUserId({
+        id: session.user.id,
+        differenceInHours: 24,
+      }));
+
+    if (messageCount > entitlementsByUserType[userType].maxFreeTrialMessages) {
+      return new ChatSDKError('forbidden:subscription').toResponse();
+    }
 
     if (messageCount > entitlementsByUserType[userType].maxMessagesPerDay) {
       return new ChatSDKError('rate_limit:chat').toResponse();

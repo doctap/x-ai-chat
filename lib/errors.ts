@@ -15,7 +15,8 @@ export type Surface =
   | 'history'
   | 'vote'
   | 'document'
-  | 'suggestions';
+  | 'suggestions'
+  | 'subscription';
 
 export type ErrorCode = `${ErrorType}:${Surface}`;
 
@@ -31,6 +32,7 @@ export const visibilityBySurface: Record<Surface, ErrorVisibility> = {
   vote: 'response',
   document: 'response',
   suggestions: 'response',
+  subscription: 'response',
 };
 
 export class ChatSDKError extends Error {
@@ -97,6 +99,9 @@ export function getMessageByErrorCode(errorCode: ErrorCode): string {
       return 'You need to sign in to view this chat. Please sign in and try again.';
     case 'offline:chat':
       return "We're having trouble sending your message. Please check your internet connection and try again.";
+
+    case 'forbidden:subscription':
+      return 'You have reached your free plan limit. Please subscribe to continue using the chat.';
 
     case 'not_found:document':
       return 'The requested document was not found. Please check the document ID and try again.';
