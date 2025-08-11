@@ -2,7 +2,7 @@
 
 import { DefaultChatTransport } from 'ai';
 import { useChat } from '@ai-sdk/react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import useSWR, { useSWRConfig } from 'swr';
 import { ChatHeader } from '@/components/chat-header';
 import type { Vote } from '@/lib/db/schema';
@@ -16,12 +16,13 @@ import { unstable_serialize } from 'swr/infinite';
 import { getChatHistoryPaginationKey } from './sidebar-history';
 import { toast } from './toast';
 import type { Session } from 'next-auth';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useChatVisibility } from '@/hooks/use-chat-visibility';
 import { useAutoResume } from '@/hooks/use-auto-resume';
 import { ChatSDKError } from '@/lib/errors';
 import type { Attachment, ChatMessage } from '@/lib/types';
 import { useDataStream } from './data-stream-provider';
+import { AlertModal } from './alert-modal';
 
 export function Chat({
   id,
@@ -47,8 +48,10 @@ export function Chat({
 
   const { mutate } = useSWRConfig();
   const { setDataStream } = useDataStream();
+  const router = useRouter();
 
   const [input, setInput] = useState<string>('');
+  const [alertDescription, setAlertDescription] = useState<string>('');
 
   const {
     messages,
@@ -58,6 +61,7 @@ export function Chat({
     stop,
     regenerate,
     resumeStream,
+    error,
   } = useChat<ChatMessage>({
     id,
     messages: initialMessages,
@@ -86,6 +90,11 @@ export function Chat({
     },
     onError: (error) => {
       if (error instanceof ChatSDKError) {
+        if (error.surface === 'subscription') {
+          setAlertDescription(error.message);
+          return;
+        }
+
         toast({
           type: 'error',
           description: error.message,
@@ -93,6 +102,11 @@ export function Chat({
       }
     },
   });
+
+  const handleAlertConfirm = useCallback(() => {
+    setAlertDescription('');
+    router.push('/payment-page');
+  }, [router]);
 
   const searchParams = useSearchParams();
   const query = searchParams.get('query');
@@ -183,6 +197,15 @@ export function Chat({
         isReadonly={isReadonly}
         selectedVisibilityType={visibilityType}
       />
+
+      {!!alertDescription && (
+        <AlertModal
+          title="Subscription Required"
+          onConfirm={handleAlertConfirm}
+          description={alertDescription}
+          isShow={!!alertDescription}
+        />
+      )}
     </>
   );
 }
